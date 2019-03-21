@@ -3,12 +3,14 @@ kind: ContainerSource
 metadata:
   name: my-kafka-source
 spec:
-  image: github.com/matzew/kafka-container-source/cmd
-  args: 
-    - '--bootstrap=kafkabroker.kafka:9092'
-    - '--topic=my-topic'
+  #image: quay.io/lberk/kafka-container-source/kes:latest
+  image: github.com/lberk/kafka-container-source/cmd
+  args:
+    - '--bootstrap=my-cluster-kafka-bootstrap.kafka:9092'
+    - '--topic=kafka-test-apps'
     - '--groupId=foobar'
+    - '--maxPosts=10'
   sink:
-    apiVersion: eventing.knative.dev/v1alpha1
-    kind: Channel
-    name: testchannel
+    apiVersion: serving.knative.dev/v1alpha1
+    kind: Service
+    name: message-dumper

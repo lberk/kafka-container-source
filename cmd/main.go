@@ -25,8 +25,7 @@ func (consumerGroupHandler) Cleanup(_ sarama.ConsumerGroupSession) error { retur
 func (h consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
 		fmt.Printf("Message topic:%q partition:%d offset:%d\n", msg.Topic, msg.Partition, msg.Offset)
-		//go post(msg.Value, c)
-
+		post := make(chan cloudevents.Event, maxPosts)
 		event := cloudevents.Event{
 			Context: cloudevents.EventContextV02{
 				Type:   "kafka-event",
@@ -34,8 +33,10 @@ func (h consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, cla
 			}.AsV02(),
 			Data: msg.Value,
 		}
-		go h.ceClient.Send(context.TODO(), event)
+		post <- event
+		go h.ceClient.Send(context.TODO(), <-post)
 		sess.MarkMessage(msg, "")
+
 	}
 	return nil
 }
@@ -45,6 +46,7 @@ var (
 	topic     string
 	groupID   string
 	bootstrap string
+	maxPosts  int
 )
 
 func init() {
@@ -52,6 +54,7 @@ func init() {
 	flag.StringVar(&topic, "topic", "", "the topic to read messages from")
 	flag.StringVar(&groupID, "groupId", uuid.New().String(), "the consumer group")
 	flag.StringVar(&bootstrap, "bootstrap", "localhost:9092", "Apache Kafka bootstrap servers")
+	flag.IntVar(&maxPosts, "maxPosts", 10, "Maximum Posts sent to Serving Sink")
 }
 
 func main() {
